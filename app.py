@@ -5,9 +5,11 @@ identify abnormal values, and provide health recommendations.
 """
 
 import os
+import io
 import json
 import re
 import sqlite3
+import tempfile
 from functools import wraps
 
 from flask import Flask, request, jsonify, session, render_template
@@ -23,17 +25,23 @@ from google import genai
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
+
+# Detect Vercel environment (read-only filesystem except /tmp)
+IS_VERCEL = os.environ.get('VERCEL', False)
 
 # Gemini AI client
 client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
 
-# Upload directory
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+# Upload directory — use /tmp on Vercel, local 'uploads/' in dev
+if IS_VERCEL:
+    UPLOAD_FOLDER = '/tmp/uploads'
+else:
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Initialize the database at import time
+# Initialize the database
 from database import init_db, get_db
 init_db()
 

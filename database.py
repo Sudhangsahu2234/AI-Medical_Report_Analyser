@@ -6,7 +6,12 @@ Handles SQLite database initialization and connection management.
 import sqlite3
 import os
 
-DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'medreport.db')
+IS_VERCEL = os.environ.get('VERCEL', False)
+
+if IS_VERCEL:
+    DATABASE = '/tmp/medreport.db'
+else:
+    DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'medreport.db')
 
 
 def get_db():
