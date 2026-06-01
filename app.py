@@ -71,6 +71,14 @@ def index():
     """Serve the main single-page application."""
     return render_template('index.html')
 
+
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    """Explicitly serve static files — required for Vercel deployment."""
+    from flask import send_from_directory
+    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+    return send_from_directory(static_dir, filename)
+
 # ---------------------------------------------------------------------------
 # Routes — Authentication
 # ---------------------------------------------------------------------------
