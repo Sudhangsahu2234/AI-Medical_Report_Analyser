@@ -147,6 +147,17 @@
           Upload Medical Report
         </h2>
 
+        <!-- Analysis Error Box -->
+        <div id="analysis-error" class="analysis-error-box glass-card" style="display: none; margin-bottom: 24px; padding: 18px; border-left: 4px solid #ff4b4b; background: rgba(255, 75, 75, 0.05); border-radius: 12px;" role="alert">
+          <div class="error-box-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-weight: 700; color: #ff4b4b; display: flex; align-items: center; gap: 8px; font-family: 'Outfit', sans-serif; font-size: 16px;">
+              ⚠️ Analysis Failed
+            </span>
+            <button id="close-analysis-error" style="background: none; border: none; color: #ff4b4b; cursor: pointer; font-size: 18px; padding: 4px; line-height: 1;">✕</button>
+          </div>
+          <div id="analysis-error-message" style="margin: 0; font-size: 14px; line-height: 1.6; color: var(--text-secondary); font-family: 'Inter', sans-serif;"></div>
+        </div>
+
         <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Upload PDF report, drag and drop or click to browse">
           <div class="drop-zone__content">
             <div class="drop-zone__icon">

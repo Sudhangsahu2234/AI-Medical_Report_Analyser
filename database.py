@@ -1,10 +1,12 @@
 """
 Database module for AI Medical Report Analyser.
 Handles SQLite database initialization and connection management.
+Uses Flask's g object for per-request connection lifecycle.
 """
 
 import sqlite3
 import os
+from flask import g
 
 IS_VERCEL = os.environ.get('VERCEL', False)
 
@@ -16,26 +18,43 @@ else:
 
 def get_db():
     """
-    Get a database connection with Row factory and foreign keys enabled.
-    
+    Get a database connection for the current request.
+    Reuses the same connection within a single request via Flask's g object.
+    Creates a new connection only if one doesn't exist yet.
+
     Returns:
         sqlite3.Connection: A configured database connection.
     """
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+    if 'db' not in g:
+        g.db = sqlite3.connect(DATABASE, timeout=10)
+        g.db.row_factory = sqlite3.Row
+        g.db.execute("PRAGMA foreign_keys = ON")
+        g.db.execute("PRAGMA journal_mode = WAL")
+        g.db.execute("PRAGMA busy_timeout = 5000")
+    return g.db
+
+
+def close_db(e=None):
+    """
+    Close the database connection at the end of each request.
+    Called automatically by Flask's teardown_appcontext.
+    """
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
 
 
 def init_db():
     """
     Initialize the database by creating required tables if they don't exist.
-    
+
     Creates:
         - users: Stores user accounts with hashed passwords.
         - analyses: Stores medical report analysis results linked to users.
     """
-    conn = get_db()
+    conn = sqlite3.connect(DATABASE, timeout=10)
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA busy_timeout = 5000")
     cursor = conn.cursor()
 
     cursor.execute('''

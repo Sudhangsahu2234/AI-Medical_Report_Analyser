@@ -41,6 +41,9 @@
   const clearFileBtn = $('#clear-file');
   const historyList = $('#history-list');
   const historyEmpty = $('#history-empty');
+  const analysisError = $('#analysis-error');
+  const analysisErrorMessage = $('#analysis-error-message');
+  const closeAnalysisErrorBtn = $('#close-analysis-error');
 
   // Loading
   const loadingStatus = $('#loading-status');
@@ -98,6 +101,9 @@
       if (e.target.files.length) handleFileSelect(e.target.files[0]);
     });
     clearFileBtn.addEventListener('click', clearFile);
+    closeAnalysisErrorBtn.addEventListener('click', () => {
+      analysisError.style.display = 'none';
+    });
 
     // Results
     backBtn.addEventListener('click', () => {
@@ -403,7 +409,14 @@
   // ============================================
   // ANALYZE REPORT
   // ============================================
+  // ============================================
+  // ANALYZE REPORT
+  // ============================================
   async function analyzeReport(file) {
+    // Hide any previous errors
+    analysisError.style.display = 'none';
+    analysisErrorMessage.innerHTML = '';
+
     // Show loading view
     showView('loading');
     startLoadingMessages();
@@ -438,14 +451,107 @@
     } catch (err) {
       stopLoadingMessages();
 
+      const errMsg = err.message || 'Failed to analyze report.';
+      console.error('[ERROR] Analysis failed:', errMsg);
+
+      // Show persistent troubleshooting alert box
+      analysisErrorMessage.innerHTML = formatAnalysisError(errMsg);
+      analysisError.style.display = 'block';
+
       if (err.name === 'AbortError') {
-        showToast('Analysis timed out. Please try again with a smaller file.', 'error');
+        showToast('Analysis timed out. Please try again.', 'error');
       } else {
-        showToast(err.message || 'Failed to analyze report.', 'error');
+        showToast('Analysis failed. Please check the error instructions.', 'error');
       }
 
       showView('dashboard');
+      clearFile();
+      
+      // Scroll to error box
+      analysisError.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+  }
+
+  // ============================================
+  // ANALYSIS ERROR FORMATTER
+  // ============================================
+  function formatAnalysisError(msg) {
+    const lower = msg.toLowerCase();
+    
+    if (msg.includes("NO_API_KEY") || lower.includes("no_api_key") || lower.includes("api key is required") || lower.includes("configure an open-source")) {
+      return `
+        <p style="margin-bottom: 12px; font-weight: 600; color: #ff4b4b; font-size: 15px;">No Open-Source API Key Configured</p>
+        <p style="margin-bottom: 10px;">To run medical report analysis using free, high-performance open-source models, please set up at least one API key in your <strong>.env</strong> file:</p>
+        <ol style="margin-left: 20px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px; padding-left: 0; list-style-position: inside;">
+          <li style="margin-bottom: 6px;">
+            <strong>SambaNova Key (Recommended - 100% Free, Super Fast, Huge Limits)</strong>:<br>
+            1. Go to <a href="https://cloud.sambanova.ai/" target="_blank" style="color: #58a6ff; text-decoration: underline; font-weight: 600;">cloud.sambanova.ai</a> and create an account.<br>
+            2. Generate a free API key and copy it.<br>
+            3. Add it to your <strong>.env</strong> file:<br>
+            <code style="display: inline-block; background: rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 6px; font-size: 13px; font-family: monospace; margin-top: 4px; border: 1px solid rgba(255,255,255,0.1); color: #e6edf3;">SAMBANOVA_API_KEY=your_sambanova_api_key_here</code>
+          </li>
+          <li style="margin-bottom: 6px;">
+            <strong>Groq Key (Free open-source alternative)</strong>:<br>
+            1. Go to <a href="https://console.groq.com/" target="_blank" style="color: #58a6ff; text-decoration: underline; font-weight: 600;">console.groq.com</a>.<br>
+            2. Generate a free API key, copy it, and add to <strong>.env</strong>:<br>
+            <code style="display: inline-block; background: rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 6px; font-size: 13px; font-family: monospace; margin-top: 4px; border: 1px solid rgba(255,255,255,0.1); color: #e6edf3;">GROQ_API_KEY=your_groq_api_key_here</code>
+          </li>
+          <li>
+            <strong>OpenRouter Key (Completely free models)</strong>:<br>
+            1. Go to <a href="https://openrouter.ai/" target="_blank" style="color: #58a6ff; text-decoration: underline; font-weight: 600;">openrouter.ai</a>.<br>
+            2. Generate a free API key and add to <strong>.env</strong>:<br>
+            <code style="display: inline-block; background: rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 6px; font-size: 13px; font-family: monospace; margin-top: 4px; border: 1px solid rgba(255,255,255,0.1); color: #e6edf3;">OPENROUTER_API_KEY=your_openrouter_api_key_here</code>
+          </li>
+        </ol>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+          💡 <strong>Note:</strong> After updating the <strong>.env</strong> file, make sure to <strong>restart your Flask server</strong> (<code style="background: rgba(255,255,255,0.08); padding: 2px 4px; border-radius: 4px; font-family: monospace;">python app.py</code>) for the new keys to take effect!
+        </p>
+      `;
+    }
+    
+    if (msg.includes("AUTH_ERROR") || msg.includes("FORBIDDEN") || lower.includes("auth_error") || lower.includes("unauthorized") || lower.includes("forbidden")) {
+      return `
+        <p style="margin-bottom: 8px; font-weight: 600; color: #ff4b4b; font-size: 15px;">Invalid or Rejected API Key</p>
+        <p style="margin-bottom: 10px;">The API key configured in your <strong>.env</strong> file was rejected by the provider server. This can happen if the key was mistyped, deleted, or suspended.</p>
+        <p style="margin-bottom: 8px;"><strong>Please check:</strong></p>
+        <ul style="margin-left: 20px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; padding-left: 0; list-style-position: inside;">
+          <li>Verify your active key matches the one on your developer dashboard exactly.</li>
+          <li>Make sure you didn't leave any spaces or quotes around the key in <strong>.env</strong>.</li>
+          <li>Links to manage keys:
+            <a href="https://cloud.sambanova.ai/" target="_blank" style="color: #58a6ff; text-decoration: underline; margin-left: 5px;">SambaNova</a> |
+            <a href="https://console.groq.com/" target="_blank" style="color: #58a6ff; text-decoration: underline; margin-left: 5px;">Groq</a> |
+            <a href="https://openrouter.ai/" target="_blank" style="color: #58a6ff; text-decoration: underline; margin-left: 5px;">OpenRouter</a>
+          </li>
+        </ul>
+        <p style="font-size: 13px; color: var(--text-muted); border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; margin-top: 10px;">
+          💡 <strong>Tip:</strong> Restart your Flask server after modifying the <strong>.env</strong> file.
+        </p>
+      `;
+    }
+    
+    if (msg.includes("RATE_LIMIT") || lower.includes("rate_limit") || lower.includes("too many requests") || lower.includes("quota exceeded")) {
+      return `
+        <p style="margin-bottom: 8px; font-weight: 600; color: #ff4b4b; font-size: 15px;">Rate Limit or Quota Reached</p>
+        <p style="margin-bottom: 10px;">You have hit the free tier rate limit or daily request quota for your active open-source provider.</p>
+        <p style="margin-bottom: 8px;"><strong>How to resolve:</strong></p>
+        <ol style="margin-left: 20px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; padding-left: 0; list-style-position: inside;">
+          <li><strong>Switch to SambaNova (Highly Recommended)</strong>: SambaNova offers extremely high free tier limits (1,000 requests/day, 10 RPM) and is completely free without credit card constraints. Sign up at <a href="https://cloud.sambanova.ai/" target="_blank" style="color: #58a6ff; text-decoration: underline; font-weight: 600;">cloud.sambanova.ai</a>.</li>
+          <li><strong>Add multiple keys in .env</strong>: The backend automatically falls back to other keys. If SambaNova, Groq, or OpenRouter are all configured, the app will try them in order!</li>
+        </ol>
+      `;
+    }
+    
+    if (msg.includes("CONNECTION_ERROR") || lower.includes("connection_error") || lower.includes("failed to connect") || lower.includes("getaddrinfo failed")) {
+      return `
+        <p style="margin-bottom: 8px; font-weight: 600; color: #ff4b4b; font-size: 15px;">API Connection Failed</p>
+        <p style="margin-bottom: 0;">The application was unable to reach the API server. This might be due to a lack of active internet connection, local firewall settings blocking outgoing HTTPS requests, or provider downtime. Please check your network and try again.</p>
+      `;
+    }
+    
+    return `
+      <p style="margin-bottom: 8px; font-weight: 600; color: #ff4b4b; font-size: 15px;">Analysis Failed</p>
+      <p style="margin-bottom: 0; font-family: monospace; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; font-size: 13px; color: #f0f6fc; border: 1px solid rgba(255,255,255,0.05);">${escapeHtml(msg)}</p>
+    `;
   }
 
   // ============================================
