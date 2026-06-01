@@ -71,14 +71,6 @@ def index():
     """Serve the main single-page application."""
     return render_template('index.html')
 
-
-@app.route('/static/<path:filename>')
-def static_files(filename):
-    """Explicitly serve static files — required for Vercel deployment."""
-    from flask import send_from_directory
-    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
-    return send_from_directory(static_dir, filename)
-
 # ---------------------------------------------------------------------------
 # Routes — Authentication
 # ---------------------------------------------------------------------------
@@ -171,6 +163,28 @@ def me():
     if 'user_id' in session:
         return jsonify({'logged_in': True, 'username': session.get('username')})
     return jsonify({'logged_in': False, 'username': None})
+
+
+@app.route('/api/debug-env', methods=['GET'])
+def debug_env():
+    """
+    Temporary debug endpoint — shows which API keys are detected (values masked).
+    Visit /api/debug-env on your deployed app to verify env vars are loaded.
+    DELETE this route once confirmed working.
+    """
+    def mask(val):
+        if not val:
+            return 'NOT SET'
+        return 'SET (' + val[:6] + '...' + val[-4:] + ')'
+
+    return jsonify({
+        'SAMBANOVA_API_KEY':  mask(os.getenv('SAMBANOVA_API_KEY', '')),
+        'GROQ_API_KEY':       mask(os.getenv('GROQ_API_KEY', '')),
+        'OPENROUTER_API_KEY': mask(os.getenv('OPENROUTER_API_KEY', '')),
+        'HF_API_TOKEN':       mask(os.getenv('HF_API_TOKEN', '')),
+        'SECRET_KEY':         mask(os.getenv('SECRET_KEY', '')),
+        'VERCEL':             os.getenv('VERCEL', 'not set'),
+    })
 
 # ---------------------------------------------------------------------------
 # PDF Text Extraction using PyMuPDF
